@@ -1,0 +1,11 @@
+Oocyte	Zygote	Cell2	Cell4
+Oocyte_02	Zygote_01	2Cell_1blastomere_03	4Cell_1blastomere_02
+Oocyte_04	Zygote_02	2Cell_1blastomere_04	4Cell_1blastomere_03
+Oocyte_05	Zygote_03	2Cell_1blastomere_05	4Cell_1blastomere_04
+Oocyte_06	Zygote_06	2Cell_1blastomere_06	4Cell_1blastomere_05
+Oocyte_07	Zygote_09	2Cell_1blastomere_08	4Cell_1blastomere_07
+	Zygote_12	2Cell_1blastomere_09	4Cell_1blastomere_08
+			4Cell_1blastomere_09
+			4Cell_1blastomere_11
+			4Cell_1blastomere_12
+			4Cell_1blastomere_13
