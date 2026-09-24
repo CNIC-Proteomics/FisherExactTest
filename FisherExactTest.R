@@ -10,7 +10,6 @@
 # IMPORTATIONS AND SETUP ----
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-
 library(future.apply)
 library(dplyr)
 library(tidyr)
@@ -475,7 +474,7 @@ if (length(grupos)>2){
     )
   }
   
-  plan(multisession,workers = min(future::availableCores(), 6))
+  plan(multisession,workers = min(future::availableCores(), length(grupos)))
   #execute the fisher test for each row
   raw_pvalues <- future_lapply(
     seq_len(nrow(pres_mat)),
@@ -508,146 +507,153 @@ if (length(grupos)>2){
   # IDs of globally significant proteins
   ids_sig <- ids[sig_idx]
   
-  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-  ## FISHER EXACT TEST ONE GROUP VS THE REST ----
-  
-  message("Building contingency tables and performing One vs All Fisher's Exact Test")
-  message("Applying discrete FDR for One vs All FET")
-  #analyze the whole group
-  analizar_grupo <- function(g_name) {
-    g <- grupos[[g_name]]
+  if (length(ids_sig) > 0){
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    ## FISHER EXACT TEST ONE GROUP VS THE REST ----
     
-    # Number of samples in the group and in the whole dataset
-    n_g <- length(g)
-    N <- ncol(pres_mat_sig)
-    n_rest <- N - n_g
+    message("Building contingency tables and performing One vs All Fisher's Exact Test")
+    message("Applying discrete FDR for One vs All FET")
+    #analyze the whole group
+    analizar_grupo <- function(g_name) {
+      g <- grupos[[g_name]]
+      
+      # Number of samples in the group and in the whole dataset
+      n_g <- length(g)
+      N <- ncol(pres_mat_sig)
+      n_rest <- N - n_g
+      
+      # Number of presences in the current group
+      x <- rowSums(pres_mat_sig[, g, drop = FALSE])
+      # Total number of presences across all samples
+      K <- rowSums(pres_mat_sig)
+      # Number of presences in the rest of the samples
+      x_rest <- K - x
+      
+      # Build one 2x2 contingency table per PGM
+      fisher_tables <- cbind(x,n_g - x,x_rest,n_rest - x_rest)
+      
+      # Fisher exact test + discrete p-value supports
+      fisher_results <- fisher_test_pv(fisher_tables, alternative = "two.sided",exact = TRUE)
+      
+      # Extract raw p-values and their corresponding supports
+      p_values <- fisher_results$get_pvalues()
+      p_supports <- fisher_results$get_pvalue_supports()
+      
+      # Discrete BH step-down
+      dbh <- discrete.BH(p_values,p_supports,direction = "sd")
+      # Adjusted p-values
+      adj_pval <- dbh$Adjusted
+      
+      # Percentage of samples in the current group where the PGM is present
+      completeness_g <- x / n_g
+      # Percentage of samples in the rest where the PGM is present
+      completeness_rest <- x_rest / n_rest
+      
+      lps <- log2(adj_pval) * sign(completeness_rest - completeness_g)
+      
+      
+      # -------------------------------------------------------------------------------
+      # Results
+      # -------------------------------------------------------------------------------
+      
+      data.table(
+        ID = ids_sig,
+        grupo = g_name,
+        P.Val = p_values,
+        Adj.P.Val = adj_pval,
+        LPS = lps
+      )
+    }
     
-    # Number of presences in the current group
-    x <- rowSums(pres_mat_sig[, g, drop = FALSE])
-    # Total number of presences across all samples
-    K <- rowSums(pres_mat_sig)
-    # Number of presences in the rest of the samples
-    x_rest <- K - x
     
-    # Build one 2x2 contingency table per PGM
-    fisher_tables <- cbind(x,n_g - x,x_rest,n_rest - x_rest)
-  
-    # Fisher exact test + discrete p-value supports
-    fisher_results <- fisher_test_pv(fisher_tables, alternative = "two.sided",exact = TRUE)
+    #merge all the groups analysis
+    plan(multisession, workers = min(length(grupos), future::availableCores()))
+    resultados_lista <- future_lapply(names(grupos), analizar_grupo, future.seed = TRUE)
+    plan(sequential)
     
-    # Extract raw p-values and their corresponding supports
-    p_values <- fisher_results$get_pvalues()
-    p_supports <- fisher_results$get_pvalue_supports()
-
-    # Discrete BH step-down
-    dbh <- discrete.BH(p_values,p_supports,direction = "sd")
-    # Adjusted p-values
-    adj_pval <- dbh$Adjusted
+    resultados_1vsall <- rbindlist(resultados_lista)
     
-    # Percentage of samples in the current group where the PGM is present
-    completeness_g <- x / n_g
-    # Percentage of samples in the rest where the PGM is present
-    completeness_rest <- x_rest / n_rest
-
-    lps <- log2(adj_pval) * sign(completeness_rest - completeness_g)
-    
-    
-    # -------------------------------------------------------------------------------
-    # Results
-    # -------------------------------------------------------------------------------
-    
-    data.table(
-      ID = ids_sig,
-      grupo = g_name,
-      P.Val = p_values,
-      Adj.P.Val = adj_pval,
-      LPS = lps
+    one_vs_all_wide <- dcast(
+      resultados_1vsall,
+      ID ~ grupo,
+      value.var = c("P.Val", "Adj.P.Val", "LPS")
     )
+    
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # ONE VS ONE ----
+    #create the pairwise comparisons
+    comparisons <- combn(names(grupos), 2, simplify = FALSE)
+    
+    message("Building contingency tables and performing One vs One Fisher's Exact Test")
+    message("Applying discrete FDR for One vs One FET")
+    #create the function to analyse one comparison
+    analizar_comparacion <- function(comp){
+      
+      g1 <- comp[1] #select the first group of the comparison
+      g2 <- comp[2] #select the second group of the comparison
+      
+      cols_g1 <- grupos[[g1]]
+      cols_g2 <- grupos[[g2]]
+      
+      n1 <- length(cols_g1)
+      n2 <- length(cols_g2)
+      
+      # Number of presences in each group
+      x1 <- rowSums(pres_mat_sig[, cols_g1, drop = FALSE])
+      x2 <- rowSums(pres_mat_sig[, cols_g2, drop = FALSE])
+      
+      # Fisher exact test
+      fisher_tables <- cbind(x1,n1 - x1,x2,n2 - x2)
+      fisher_results <- fisher_test_pv(fisher_tables,alternative = "two.sided",exact = TRUE)
+      
+      # Raw p-values
+      p_values <- fisher_results$get_pvalues()
+      # Theoretical p-value supports
+      p_supports <- fisher_results$get_pvalue_supports()
+      
+      # Discrete BH step-down
+      dbh <- discrete.BH(p_values,p_supports,direction = "sd")
+      adj_pval <- dbh$Adjusted
+      
+      # Coverage
+      completeness_g1 <- x1 / n1
+      completeness_g2 <- x2 / n2
+      
+      # LPS
+      lps <- log2(adj_pval) * sign(completeness_g2 - completeness_g1)
+      
+      # Output
+      data.table(
+        ID = ids_sig,
+        comparison = paste0(g1, "_", g2),
+        P.Val = p_values,
+        Adj.P.Val = adj_pval,
+        LPS = lps
+      )
+    }
+    
+    plan(multisession,workers = min(length(comparisons),future::availableCores()))
+    resultados_lista <- future_lapply(
+      comparisons,
+      analizar_comparacion,
+      future.seed = TRUE
+    )
+    
+    plan(sequential)
+    
+    resultados_1vs1 <- rbindlist(resultados_lista)
+    
+    one_vs_one_wide <- dcast(
+      resultados_1vs1,
+      ID ~ comparison,
+      value.var = c("P.Val", "Adj.P.Val", "LPS"),
+      sep = "_"
+    )
+  } else {
+    one_vs_all_wide <- data.frame(ID = character())
+    one_vs_one_wide <- data.frame(ID = character())
   }
   
-  #merge all the groups analysis
-  plan(multisession, workers = min(length(grupos), future::availableCores()))
-  resultados_lista <- future_lapply(names(grupos), analizar_grupo, future.seed = TRUE)
-  plan(sequential)
-  
-  resultados_1vsall <- rbindlist(resultados_lista)
-  
-  one_vs_all_wide <- dcast(
-    resultados_1vsall,
-    ID ~ grupo,
-    value.var = c("P.Val", "Adj.P.Val", "LPS")
-  )
-  
-  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-  # ONE VS ONE ----
-  #create the pairwise comparisons
-  comparisons <- combn(names(grupos), 2, simplify = FALSE)
-  
-  message("Building contingency tables and performing One vs One Fisher's Exact Test")
-  message("Applying discrete FDR for One vs One FET")
-  #create the function to analyse one comparison
-  analizar_comparacion <- function(comp){
-    
-    g1 <- comp[1] #select the first group of the comparison
-    g2 <- comp[2] #select the second group of the comparison
-    
-    cols_g1 <- grupos[[g1]]
-    cols_g2 <- grupos[[g2]]
-    
-    n1 <- length(cols_g1)
-    n2 <- length(cols_g2)
-    
-    # Number of presences in each group
-    x1 <- rowSums(pres_mat_sig[, cols_g1, drop = FALSE])
-    x2 <- rowSums(pres_mat_sig[, cols_g2, drop = FALSE])
-    
-    # Fisher exact test
-    fisher_tables <- cbind(x1,n1 - x1,x2,n2 - x2)
-    fisher_results <- fisher_test_pv(fisher_tables,alternative = "two.sided",exact = TRUE)
-    
-    # Raw p-values
-    p_values <- fisher_results$get_pvalues()
-    # Theoretical p-value supports
-    p_supports <- fisher_results$get_pvalue_supports()
-    
-    # Discrete BH step-down
-    dbh <- discrete.BH(p_values,p_supports,direction = "sd")
-    adj_pval <- dbh$Adjusted
-    
-    # Coverage
-    completeness_g1 <- x1 / n1
-    completeness_g2 <- x2 / n2
-    
-    # LPS
-    lps <- log2(adj_pval) * sign(completeness_g2 - completeness_g1)
-    
-    # Output
-    data.table(
-      ID = ids_sig,
-      comparison = paste0(g1, "_", g2),
-      P.Val = p_values,
-      Adj.P.Val = adj_pval,
-      LPS = lps
-    )
-  }
-  
-  plan(multisession,workers = min(length(comparisons),future::availableCores()))
-  resultados_lista <- future_lapply(
-    comparisons,
-    analizar_comparacion,
-    future.seed = TRUE
-  )
-  
-  plan(sequential)
-  
-  resultados_1vs1 <- rbindlist(resultados_lista)
-  
-  one_vs_one_wide <- dcast(
-    resultados_1vs1,
-    ID ~ comparison,
-    value.var = c("P.Val", "Adj.P.Val", "LPS"),
-    sep = "_"
-  )
   
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   # MERGE ALL THE RESULTS
@@ -668,7 +674,11 @@ if (length(grupos)>2){
     new = paste0("Coverage_", names(grupos))
   )
   
-  all_together <- input_table |> left_join(coverage, by = c("Precursor.Id" = "ID")) |> left_join(resultados_multicat, by = c("Precursor.Id" = "ID")) |> left_join(one_vs_all_wide, by = c("Precursor.Id" = "ID")) |> left_join(one_vs_one_wide, by = c("Precursor.Id" = "ID"))
+  all_together <- input_table |>
+    left_join(coverage, by = setNames("ID", opt$col_name)) |>
+    left_join(resultados_multicat, by = setNames("ID", opt$col_name)) |>
+    left_join(one_vs_all_wide, by = setNames("ID", opt$col_name)) |>
+    left_join(one_vs_one_wide, by = setNames("ID", opt$col_name))
   
   path2save <- gsub("\\.tsv","_FET.tsv",opt$input)
   message("Saving results at ", path2save)
