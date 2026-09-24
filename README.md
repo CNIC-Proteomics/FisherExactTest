@@ -9,6 +9,7 @@ R script implementing Fisher's Exact Test (hypergeometric test) to assess statis
  - `data.table` 1.18.6.1
  - `stringr` 1.6.0
  - `DiscreteFDR` v2.1.1
+ - `DiscreteTests` v0.5.1
  - `optparse` 1.8.2
 
 ## Usage
