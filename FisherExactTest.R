@@ -396,10 +396,10 @@ if (length(grupos)==2){
   
   resultados <- data.table(
     ID = ids,
-    P.Val = p_values,
-    Adj.P.Val = adj_pval,
     percent_1,
     percent_2,
+    P.Val = p_values,
+    Adj.P.Val = adj_pval,
     LPS = lps
   )
   
@@ -671,7 +671,7 @@ if (length(grupos)>2){
   setnames(
     coverage,
     old = names(grupos),
-    new = paste0("Coverage_", names(grupos))
+    new = paste0("Completeness_", names(grupos))
   )
   
   all_together <- input_table |>
