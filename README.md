@@ -24,7 +24,7 @@ Rscript FisherExactTest.R -i <input_table> -g <groups_table> -c <col_name> -f <F
 * `input_table`: tabular file (TSV) containing peptide/protein-level information, with samples in the columns and peptides/proteins in the rows. This is typically the output of DIA-NN or iSanXoT. Cells corresponding to NA values must be left empty (do not fill them with 0, blank text, or anything similar).
 * `groups_table`: TSV file with the sample-to-group correspondence. It must have as many columns as there are groups in input_table, with each sample placed under the column corresponding to its group.
 * `col_name`: name of the column in input_table to be used as the row identifier (typically `Precursor.Id` or `Protein.Group` in DIA-NN, or `pgm`, `p`, or `q` in iSanXoT).
-* `fdr`: FDR threshold that will be applied to Global Fisher's Exact Test to select which rows are selected to perform One vs All and One vs One.
+* `fdr`: FDR threshold that will be applied to Global Fisher's Exact Test to select in which rows One vs All and One vs One tests will be performed. By default is 0.05.
 
 ## Output
 
