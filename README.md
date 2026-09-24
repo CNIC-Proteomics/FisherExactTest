@@ -15,7 +15,7 @@ R script implementing Fisher's Exact Test (hypergeometric test) to assess statis
 ## Usage
 
 ```bash
-Rscript FisherExactTest.R -i <input_table> -g <groups_table> -c <col_name>
+Rscript FisherExactTest.R -i <input_table> -g <groups_table> -c <col_name> -f <FDR threshold>
 ```
    > ⚠️ _R bin folder should be in your environment PATH in order to execute R scripts from command line_
 
