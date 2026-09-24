@@ -28,18 +28,11 @@ Rscript FisherExactTest.R -i <input_table> -g <groups_table> -c <col_name> -f <F
 
 ## Output
 
-After running the script, a TSV file will be generated in the same location as input_table with the `_FET` suffix. This file will contain the same columns as input_table plus the following columns:
+After running the script, a TSV file will be generated in the same location as input_table with the `_FET` suffix.
 
-* **P.Val.Enrich_\<group\>**: contains the unadjusted p-value determining whether the corresponding group is enriched (i.e., has greater presence in that group).
-* **Signif_Enrich_\<group\>**: binary variable that takes the value TRUE when the enrichment p-value for that group passes an FDR of 0.05.
-
-If there are more than two groups, the following additional columns will also be provided:
-
-* **P.Val.Deple_\<group\>**: contains the unadjusted p-value determining whether the corresponding group is depleted (i.e., has greater absence in that group).
-* **Signif_Deple_\<group\>**: binary variable that takes the value TRUE when the depletion p-value for that group passes an FDR of 0.05.
-* **P.Val**: p-value for the "multi-category" Fisher Exact Test (i.e., it compares the presence/absence distribution against the null distribution and determines whether there is a different pattern in our distribution).
-* **P.Mid**: the mid-p-value, a continuous approximation for p-values from discrete tests (such as the Fisher Exact Test), which allows p-value correction methods to be applied.
-* **Adj.P.Val**: mid-p-value adjusted using the Benjamini-Hochberg method.
-* **P.Val.Enrich/Deple_\<groupA\>_\<groupB\>**: for those rows (peptides/proteins) with an Adj.P.Val below 0.05, or with any Signif_Enrich/Deple_\<group\> column equal to TRUE, a Fisher Exact Test is performed across all possible pairwise group combinations. For each comparison, a p-value is provided for the enrichment of the first group (A) over the second (B), as well as for the depletion of the first group (A) relative to the second (B).
-* **Signif_Enrich/Deple_\<groupA\>_\<groupB\>**: binary variable that takes the value TRUE when the enrichment/depletion p-value for that groupA-groupB comparison passes an FDR of 0.05.
-
+If the number of **groups is 2**, the following columns will be added at the end of the table:
+* P.Val: ss
+* Adj.P.Val:
+* Completeness_<groupA>:
+* Completeness_<groupB>:
+* LPS: 
