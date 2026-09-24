@@ -31,8 +31,8 @@ Rscript FisherExactTest.R -i <input_table> -g <groups_table> -c <col_name> -f <F
 After running the script, a TSV file will be generated in the same location as input_table with the `_FET` suffix.
 
 If the number of **groups is 2**, the following columns will be added at the end of the table:
-* P.Val: ss
+* P.Val: 
 * Adj.P.Val:
-* Completeness_<groupA>:
-* Completeness_<groupB>:
+* Completeness_\<groupA\>:
+* Completeness_\<groupB\>:
 * LPS: 
