@@ -45,8 +45,8 @@ If there are **more than 2 groups**, the following columns will be added at the 
 For features with a significant Adj.P.Val (according to the user-defined FDR threshold), the following additional columns are included:
 
 * `P.Val_<group>`: two-sided Fisher's exact test p-value comparing the presence/absence pattern in the specified group against all other groups combined.
-* `Adj.P.Val_<group>`: p-value from P.Val_<group> adjusted for multiple testing using the discrete FDR step-down procedure.
+* `Adj.P.Val_<group>`: p-value from P.Val_\<group\> adjusted for multiple testing using the discrete FDR step-down procedure.
 * `LPS_<group>`: signed log2-transformed adjusted p-value. Positive values indicate that the feature is more represented in the specified group than in the other groups, whereas negative values indicate that the feature is underrepresented in the specified group. A value of 0 indicates no difference.
 * `P.Val_<groupA>_<groupB>`: two-sided Fisher's exact test p-value assessing whether there is a significant difference in the presence/absence pattern between group A and group B.
-* `Adj.P.Val_<groupA>_<groupB>`: p-value from P.Val_<groupA>_<groupB> adjusted for multiple testing using the discrete FDR step-down procedure.
+* `Adj.P.Val_<groupA>_<groupB>`: p-value from P.Val_\<groupA\>_\<groupB\> adjusted for multiple testing using the discrete FDR step-down procedure.
 * `LPS_<groupA>_<groupB>`: signed log2-transformed adjusted p-value. Positive values indicate that the feature is more represented in group A than in group B, whereas negative values indicate that the feature is more represented in group B than in group A. A value of 0 indicates no difference.
