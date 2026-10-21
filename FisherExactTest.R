@@ -86,6 +86,18 @@ grupos <- lapply(groups_table, function(x) {
 
 names(grupos) <- colnames(groups_table)
 
+#ignore columns defined in groups_table that are missing in input_table
+missing_cols <- setdiff(unlist(grupos, use.names = FALSE), colnames(input_table))
+if (length(missing_cols) > 0) {
+  warning(
+    length(missing_cols), " columna(s) de groups_table no están en input_table y se ignoran: ",
+    paste(missing_cols, collapse = ", ")
+  )
+}
+
+grupos <- lapply(grupos, function(x) x[x %in% colnames(input_table)])
+grupos <- grupos[lengths(grupos) > 0]  # elimina grupos que se quedan sin columnas
+
 if (length(grupos)<2) {
   stop("Error: el número de grupos es inferior a 2. Por favor chequea la groups_table")
 }
